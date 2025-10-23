@@ -15,7 +15,7 @@ interface NavigationChild {
 interface NavigationItem {
   name: string;
   href?: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   children?: NavigationChild[];
   isSeparator?: boolean;
 }
