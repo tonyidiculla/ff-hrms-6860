@@ -1,79 +1,163 @@
 'use client';
 
-import { Metadata } from 'next';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { 
+  UserGroupIcon, 
+  UserPlusIcon, 
+  BuildingOfficeIcon, 
+  BriefcaseIcon,
+  MagnifyingGlassIcon,
+  EllipsisVerticalIcon
+} from '@heroicons/react/24/outline';
+import { HRMSLayout, ContentCard, MetricsGrid } from '@/components/layout/HRMSLayout';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { TabItem } from '@/types/layout';
 
-const tabs = [
-  { name: 'Directory', href: '/employees' },
-  { name: 'Add Employee', href: '/employees/add' },
-  { name: 'Departments', href: '/employees/departments' },
-  { name: 'Positions', href: '/employees/positions' },
+const tabs: TabItem[] = [
+  { 
+    name: 'Directory', 
+    href: '/employees',
+    icon: UserGroupIcon
+  },
+  { 
+    name: 'Add Employee', 
+    href: '/employees/add',
+    icon: UserPlusIcon
+  },
+  { 
+    name: 'Departments', 
+    href: '/employees/departments',
+    icon: BuildingOfficeIcon
+  },
+  { 
+    name: 'Positions', 
+    href: '/employees/positions',
+    icon: BriefcaseIcon
+  },
 ];
 
+const headerActions = (
+  <div className="flex items-center space-x-3">
+    <button className="hrms-btn hrms-btn-secondary">
+      <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
+      Search Employees
+    </button>
+    <button className="hrms-btn hrms-btn-primary">
+      <UserPlusIcon className="h-4 w-4 mr-2" />
+      Add Employee
+    </button>
+  </div>
+);
+
 export default function EmployeesPage() {
-  const pathname = usePathname();
-
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Employee Management</h1>
-      
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => {
-            const isActive = pathname === tab.href;
-            return (
-              <Link
-                key={tab.name}
-                href={tab.href}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  isActive
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.name}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+    <HRMSLayout
+      header={{
+        title: 'Employee Management',
+        subtitle: 'Manage employee records, view information, and perform HR-related tasks.',
+        actions: headerActions,
+        breadcrumbs: [
+          { name: 'HRMS', href: '/' },
+          { name: 'Employees' },
+        ],
+      }}
+      tabs={tabs}
+    >
+      {/* Employee Metrics */}
+      <MetricsGrid columns={4}>
+        <MetricCard
+          title="Total Employees"
+          value={156}
+          color="blue"
+          icon={UserGroupIcon}
+          trend={{ value: 3.2, direction: 'up' }}
+        />
+        <MetricCard
+          title="Active Employees"
+          value={152}
+          color="green"
+          icon={UserGroupIcon}
+          trend={{ value: 1.8, direction: 'up' }}
+        />
+        <MetricCard
+          title="On Leave"
+          value={4}
+          color="yellow"
+          icon={UserGroupIcon}
+          trend={{ value: 0.5, direction: 'down' }}
+        />
+        <MetricCard
+          title="New Hires (Month)"
+          value={8}
+          color="purple"
+          icon={UserPlusIcon}
+          trend={{ value: 12.5, direction: 'up' }}
+        />
+      </MetricsGrid>
 
-      {/* Directory Content */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Employee Directory</h2>
-        <p className="text-gray-600 mb-6">
-          This is the employees section of the HRMS system. Here you can manage employee records, 
-          view employee information, and perform HR-related tasks.
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="font-medium text-blue-900">Total Employees</h3>
-            <p className="text-2xl font-bold text-blue-600">156</p>
+      {/* Employee Directory */}
+      <ContentCard 
+        title="Employee Directory"
+        headerActions={
+          <button className="hrms-btn hrms-btn-secondary text-xs">
+            <EllipsisVerticalIcon className="h-4 w-4" />
+          </button>
+        }
+      >
+        <div className="space-y-6">
+          {/* Search and Filter Bar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search employees..."
+                  className="hrms-input pl-10 w-64"
+                />
+              </div>
+              <select className="hrms-input w-40">
+                <option>All Departments</option>
+                <option>Medical Services</option>
+                <option>Administration</option>
+                <option>Support</option>
+              </select>
+              <select className="hrms-input w-32">
+                <option>All Status</option>
+                <option>Active</option>
+                <option>On Leave</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <span>Sort by:</span>
+              <select className="hrms-input w-32 text-sm">
+                <option>Name</option>
+                <option>Department</option>
+                <option>Join Date</option>
+                <option>Position</option>
+              </select>
+            </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="font-medium text-green-900">Active</h3>
-            <p className="text-2xl font-bold text-green-600">152</p>
-          </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="font-medium text-yellow-900">On Leave</h3>
-            <p className="text-2xl font-bold text-yellow-600">4</p>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <h3 className="font-medium text-purple-900">New Hires (Month)</h3>
-            <p className="text-2xl font-bold text-purple-600">8</p>
+
+          {/* Employee List Placeholder */}
+          <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
+            <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Employee Directory</h3>
+            <p className="text-gray-600 mb-4">
+              Employee directory with search, filtering, and management features coming soon.
+            </p>
+            <div className="flex justify-center space-x-3">
+              <button className="hrms-btn hrms-btn-primary">
+                Import Employees
+              </button>
+              <button className="hrms-btn hrms-btn-secondary">
+                Download Template
+              </button>
+            </div>
           </div>
         </div>
-
-        <div className="space-y-4">
-          <h3 className="text-md font-medium text-gray-900">Employee List</h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-gray-600">Employee directory and search functionality coming soon...</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </ContentCard>
+    </HRMSLayout>
   );
 }

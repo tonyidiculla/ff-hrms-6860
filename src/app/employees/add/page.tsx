@@ -12,7 +12,9 @@ import {
   CurrencyDollarIcon,
   UserGroupIcon
 } from '@heroicons/react/24/outline';
+import { HRMSLayout, ContentCard } from '@/components/layout/HRMSLayout';
 import { Employee, Department } from '@/types/hr';
+import { TabItem } from '@/types/layout';
 
 const mockDepartments: Department[] = [
   {
@@ -60,12 +62,22 @@ const mockManagers = [
   { id: 'emp-007', name: 'David Chen' }
 ];
 
-const tabs = [
-  { name: 'Directory', href: '/employees' },
-  { name: 'Add Employee', href: '/employees/add' },
-  { name: 'Departments', href: '/employees/departments' },
-  { name: 'Positions', href: '/employees/positions' },
+const tabs: TabItem[] = [
+  { name: 'Directory', href: '/employees', icon: UserGroupIcon },
+  { name: 'Add Employee', href: '/employees/add', icon: UserPlusIcon },
+  { name: 'Departments', href: '/employees/departments', icon: BuildingOfficeIcon },
+  { name: 'Positions', href: '/employees/positions', icon: UserPlusIcon },
 ];
+
+const headerProps = {
+  title: "Add New Employee",
+  subtitle: "Register a new team member to the organization",
+  breadcrumbs: [
+    { name: 'Home', href: '/' },
+    { name: 'Employees', href: '/employees' },
+    { name: 'Add Employee' }
+  ]
+};
 
 export default function AddEmployeePage() {
   const pathname = usePathname();
@@ -176,47 +188,12 @@ export default function AddEmployeePage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => {
-            const isActive = pathname === tab.href;
-            return (
-              <Link
-                key={tab.name}
-                href={tab.href}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  isActive
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.name}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <UserPlusIcon className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Add New Employee</h1>
-        </div>
-        <p className="text-gray-600">Create a new employee record with all necessary details</p>
-      </div>
-
-      {/* Form */}
+    <HRMSLayout header={headerProps} tabs={tabs}>
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Personal Information */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <UserGroupIcon className="h-5 w-5 mr-2 text-blue-600" />
-            Personal Information
-          </h2>
-          
+        <ContentCard title="Personal Information" headerActions={
+          <UserGroupIcon className="h-5 w-5 text-blue-600" />
+        }>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700 mb-2">
@@ -289,15 +266,12 @@ export default function AddEmployeePage() {
               {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
             </div>
           </div>
-        </div>
+        </ContentCard>
 
         {/* Contact Information */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <EnvelopeIcon className="h-5 w-5 mr-2 text-blue-600" />
-            Contact Information
-          </h2>
-          
+        <ContentCard title="Contact Information" headerActions={
+          <EnvelopeIcon className="h-5 w-5 text-blue-600" />
+        }>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -338,15 +312,12 @@ export default function AddEmployeePage() {
               </div>
             </div>
           </div>
-        </div>
+        </ContentCard>
 
         {/* Employment Information */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <BuildingOfficeIcon className="h-5 w-5 mr-2 text-blue-600" />
-            Employment Information
-          </h2>
-          
+        <ContentCard title="Employment Information" headerActions={
+          <BuildingOfficeIcon className="h-5 w-5 text-blue-600" />
+        }>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700 mb-2">
@@ -470,7 +441,7 @@ export default function AddEmployeePage() {
               {errors.salary && <p className="mt-1 text-sm text-red-600">{errors.salary}</p>}
             </div>
           </div>
-        </div>
+        </ContentCard>
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-4 pt-6">
@@ -492,6 +463,6 @@ export default function AddEmployeePage() {
           </button>
         </div>
       </form>
-    </div>
+    </HRMSLayout>
   );
 }

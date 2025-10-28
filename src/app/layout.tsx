@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "FURFIELD HRMS",
-  description: "Human Resource Management System",
+  description: "Human Resource Management System - Comprehensive HR solutions for veterinary practices",
 };
 
 export default function RootLayout({
@@ -12,11 +12,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-transparent">
-        <main className="p-6">
+    <html lang="en" className="h-full">
+      <body className="h-full m-0 p-0" style={{ background: 'transparent' }}>
+        <div className="h-full">
           {children}
-        </main>
+        </div>
       </body>
     </html>
   );
