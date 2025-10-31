@@ -1,193 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 import { 
   BriefcaseIcon,
-  PlusIcon,
   MagnifyingGlassIcon,
-  PencilSquareIcon,
-  EyeIcon,
-  BuildingOfficeIcon,
-  CurrencyDollarIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  UserGroupIcon,
+  PlusIcon,
+  XMarkIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
-import { Position, Department } from '@/types/hr';
-import { formatCurrency } from '@/lib/utils';
-
-const mockDepartments: Department[] = [
-  {
-    id: 'dept-1',
-    name: 'Veterinary Services',
-    code: 'VET',
-    budgetCode: 'BUD-VET-001',
-    isActive: true,
-    createdAt: '2020-01-15T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'dept-2',
-    name: 'Reception & Administration',
-    code: 'ADMIN',
-    budgetCode: 'BUD-ADM-001',
-    isActive: true,
-    createdAt: '2020-01-15T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'dept-3',
-    name: 'Surgery',
-    code: 'SURG',
-    budgetCode: 'BUD-SUR-001',
-    isActive: true,
-    createdAt: '2020-06-01T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'dept-4',
-    name: 'Laboratory',
-    code: 'LAB',
-    budgetCode: 'BUD-LAB-001',
-    isActive: true,
-    createdAt: '2021-03-10T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  }
-];
-
-const mockPositions: Position[] = [
-  {
-    id: 'pos-001',
-    title: 'Senior Veterinarian',
-    description: 'Lead veterinarian responsible for complex cases and team supervision',
-    departmentId: 'dept-1',
-    level: 'Senior',
-    salaryRange: {
-      min: 80000,
-      max: 120000
-    },
-    requirements: [
-      'DVM degree from accredited institution',
-      '5+ years veterinary experience',
-      'State veterinary license',
-      'Leadership experience preferred'
-    ],
-    isActive: true,
-    createdAt: '2020-01-15T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'pos-002',
-    title: 'Veterinary Technician',
-    description: 'Assists veterinarians with medical procedures and patient care',
-    departmentId: 'dept-1',
-    level: 'Mid-Level',
-    salaryRange: {
-      min: 35000,
-      max: 50000
-    },
-    requirements: [
-      'Veterinary Technology degree',
-      'Certification/license as required by state',
-      '2+ years experience preferred',
-      'Strong animal handling skills'
-    ],
-    isActive: true,
-    createdAt: '2020-01-15T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'pos-003',
-    title: 'Receptionist',
-    description: 'Front desk operations, client communication, and administrative support',
-    departmentId: 'dept-2',
-    level: 'Entry-Level',
-    salaryRange: {
-      min: 28000,
-      max: 38000
-    },
-    requirements: [
-      'High school diploma',
-      'Customer service experience',
-      'Computer proficiency',
-      'Excellent communication skills'
-    ],
-    isActive: true,
-    createdAt: '2020-01-15T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'pos-004',
-    title: 'Office Manager',
-    description: 'Oversee administrative operations and manage support staff',
-    departmentId: 'dept-2',
-    level: 'Senior',
-    salaryRange: {
-      min: 45000,
-      max: 65000
-    },
-    requirements: [
-      'Bachelor\'s degree preferred',
-      '3+ years management experience',
-      'Experience in healthcare/veterinary field',
-      'Strong organizational skills'
-    ],
-    isActive: true,
-    createdAt: '2020-01-15T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'pos-005',
-    title: 'Veterinary Surgeon',
-    description: 'Specialized surgical procedures for animals',
-    departmentId: 'dept-3',
-    level: 'Senior',
-    salaryRange: {
-      min: 100000,
-      max: 150000
-    },
-    requirements: [
-      'DVM degree',
-      'Surgical residency completion',
-      'Board certification in surgery',
-      '3+ years surgical experience'
-    ],
-    isActive: true,
-    createdAt: '2020-06-01T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'pos-006',
-    title: 'Lab Technician',
-    description: 'Perform diagnostic tests and laboratory analysis',
-    departmentId: 'dept-4',
-    level: 'Mid-Level',
-    salaryRange: {
-      min: 40000,
-      max: 55000
-    },
-    requirements: [
-      'Associate degree in relevant field',
-      'Laboratory experience',
-      'Attention to detail',
-      'Knowledge of lab safety protocols'
-    ],
-    isActive: true,
-    createdAt: '2021-03-10T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  },
-  {
-    id: 'pos-007',
-    title: 'Veterinary Assistant',
-    description: 'Support veterinary staff with basic animal care and clinic operations',
-    departmentId: 'dept-1',
-    level: 'Entry-Level',
-    isActive: false,
-    createdAt: '2021-08-15T00:00:00Z',
-    updatedAt: '2023-10-20T00:00:00Z'
-  }
-];
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 const tabs = [
   { name: 'Directory', href: '/employees' },
@@ -196,41 +23,291 @@ const tabs = [
   { name: 'Positions', href: '/employees/positions' },
 ];
 
+interface Position {
+  unique_seat_id: string;
+  employee_job_title: string;
+  department: string;
+  employment_status: string;
+  is_filled: boolean;
+  is_active: boolean;
+  user_platform_id: string | null;
+  employee_entity_id: string | null;
+  salary: number | null;
+  salary_currency: string | null;
+  employment_start_date: string | null;
+}
+
+interface SeatRole {
+  id: string;
+  job_title: string;
+  count: number;
+}
+
+interface PlatformRole {
+  role_code: string;
+  role_name: string;
+  id: string;
+}
+
 export default function PositionsPage() {
   const pathname = usePathname();
-  const [positions, setPositions] = useState<Position[]>(mockPositions);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedLevel, setSelectedLevel] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'filled' | 'vacant'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [seatRoles, setSeatRoles] = useState<SeatRole[]>([
+    { id: '1', job_title: '', count: 1 }
+  ]);
+  const [creating, setCreating] = useState(false);
+  const [platformRoles, setPlatformRoles] = useState<PlatformRole[]>([]);
+  const [roleSearchTerms, setRoleSearchTerms] = useState<Record<string, string>>({});
+  const [showRoleDropdown, setShowRoleDropdown] = useState<Record<string, boolean>>({});
 
-  const getDepartmentName = (departmentId: string) => {
-    const dept = mockDepartments.find(d => d.id === departmentId);
-    return dept ? dept.name : 'Unknown Department';
+  useEffect(() => {
+    fetchPositions();
+    fetchPlatformRoles();
+  }, []);
+
+  const fetchPlatformRoles = async () => {
+    try {
+      console.log('[Positions] Fetching platform roles...');
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { data, error } = await supabase
+        .from('platform_roles')
+        .select('id, role_name, display_name')
+        .order('role_name');
+
+      console.log('[Positions] Platform roles result:', { 
+        count: data?.length, 
+        error: error?.message,
+        data: data?.slice(0, 3) // Show first 3 for debugging
+      });
+
+      if (error) {
+        console.error('[Positions] Error details:', error);
+        alert(`Failed to load job roles: ${error.message}`);
+        throw error;
+      }
+      
+      // Map to include role_code as id for compatibility
+      const rolesWithCode = data?.map(role => ({
+        role_code: role.id,
+        role_name: role.display_name || role.role_name,
+        id: role.id
+      })) || [];
+      
+      setPlatformRoles(rolesWithCode);
+      console.log('[Positions] Platform roles loaded:', rolesWithCode.length);
+    } catch (error) {
+      console.error('[Positions] Exception fetching platform roles:', error);
+    }
+  };
+
+  const fetchPositions = async () => {
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { data, error } = await supabase
+        .from('employee_seat_assignment')
+        .select('unique_seat_id, employee_job_title, department, employment_status, is_filled, is_active, user_platform_id, employee_entity_id, salary, salary_currency, employment_start_date')
+        .order('employee_job_title', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching positions:', error);
+      } else {
+        setPositions(data || []);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    const toggleActiveStatus = async (seatId: string, currentStatus: boolean) => {
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { error } = await supabase
+        .from('employee_seat_assignment')
+        .update({ is_active: !currentStatus })
+        .eq('unique_seat_id', seatId);
+
+      if (error) throw error;
+
+      // Update local state
+      setPositions(positions.map(pos => 
+        pos.unique_seat_id === seatId 
+          ? { ...pos, is_active: !currentStatus }
+          : pos
+      ));
+    } catch (error) {
+      console.error('Error updating seat status:', error);
+      alert('Failed to update seat status');
+    }
+  };
+
+  const addSeatRole = () => {
+    setSeatRoles([...seatRoles, { 
+      id: Date.now().toString(), 
+      job_title: '', 
+      count: 1 
+    }]);
+  };
+
+  const removeSeatRole = (id: string) => {
+    if (seatRoles.length > 1) {
+      setSeatRoles(seatRoles.filter(role => role.id !== id));
+    }
+  };
+
+  const updateSeatRole = (id: string, field: keyof SeatRole, value: string | number) => {
+    setSeatRoles(seatRoles.map(role => 
+      role.id === id ? { ...role, [field]: value } : role
+    ));
+  };
+
+  const generateSeatId = (entityId: string, index: number) => {
+    // Generate 6-character alphanumeric code
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const randomPart = Array.from({ length: 6 }, () => 
+      chars.charAt(Math.floor(Math.random() * chars.length))
+    ).join('');
+    return `${entityId}.${randomPart}`;
+  };
+
+  const createSeats = async () => {
+    try {
+      setCreating(true);
+      
+      // Validate all roles
+      const invalidRoles = seatRoles.filter(role => 
+        !role.job_title.trim() || role.count < 1
+      );
+      
+      if (invalidRoles.length > 0) {
+        alert('Please select a job role and ensure count is at least 1');
+        return;
+      }
+
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      // Get current user's entity_platform_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: seatData, error: seatError } = await supabase
+        .from('employee_seat_assignment')
+        .select('employee_entity_id')
+        .eq('user_platform_id', user.id)
+        .single();
+
+      if (seatError || !seatData) throw new Error('Could not find entity ID');
+
+      const entityId = seatData.employee_entity_id;
+
+      // Generate all seat records
+      const seatsToCreate = seatRoles.flatMap(role => 
+        Array.from({ length: role.count }, (_, index) => ({
+          unique_seat_id: generateSeatId(entityId, index),
+          employee_job_title: role.job_title,
+          department: null,
+          employment_status: 'open',
+          is_filled: false,
+          is_active: true,
+          employee_entity_id: entityId,
+          user_platform_id: null,
+          salary: null,
+          salary_currency: null,
+          employment_start_date: null
+        }))
+      );
+
+      const { error: insertError } = await supabase
+        .from('employee_seat_assignment')
+        .insert(seatsToCreate);
+
+      if (insertError) throw insertError;
+
+      // Close modal and refresh
+      setIsCreateModalOpen(false);
+      setSeatRoles([{ id: '1', job_title: '', count: 1 }]);
+      setRoleSearchTerms({});
+      setShowRoleDropdown({});
+      await fetchPositions();
+      
+      alert(`Successfully created ${seatsToCreate.length} position(s)`);
+    } catch (error) {
+      console.error('Error creating seats:', error);
+      alert('Failed to create positions');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const totalSeatsToCreate = seatRoles.reduce((sum, role) => sum + role.count, 0);
+
+  const toggleFilledStatus = async (seatId: string, currentStatus: boolean) => {
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { error } = await supabase
+        .from('employee_seat_assignment')
+        .update({ is_filled: !currentStatus })
+        .eq('unique_seat_id', seatId);
+
+      if (error) {
+        console.error('Error updating filled status:', error);
+        alert('Failed to update filled status. Please try again.');
+      } else {
+        // Update local state
+        setPositions(positions.map(pos => 
+          pos.unique_seat_id === seatId 
+            ? { ...pos, is_filled: !currentStatus }
+            : pos
+        ));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('An error occurred. Please try again.');
+    }
   };
 
   const filteredPositions = positions.filter(position => {
-    const matchesSearch = position.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (position.description && position.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesDepartment = selectedDepartment === '' || position.departmentId === selectedDepartment;
-    const matchesLevel = selectedLevel === '' || position.level === selectedLevel;
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && position.isActive) ||
-                         (statusFilter === 'inactive' && !position.isActive);
+    const matchesSearch = position.employee_job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         position.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         position.employee_entity_id?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch && matchesDepartment && matchesLevel && matchesStatus;
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'filled' && position.is_filled) ||
+                         (statusFilter === 'vacant' && !position.is_filled);
+    
+    return matchesSearch && matchesStatus;
   });
 
-  const handleViewDetails = (position: Position) => {
-    setSelectedPosition(position);
-    setIsDetailModalOpen(true);
+  const stats = {
+    total: positions.length,
+    filled: positions.filter(p => p.is_filled).length,
+    vacant: positions.filter(p => !p.is_filled).length,
+    active: positions.filter(p => p.is_active).length,
   };
-
-  const activePositions = positions.filter(p => p.isActive);
-  const uniqueLevels = [...new Set(positions.map(p => p.level).filter(Boolean))];
 
   return (
     <div className="p-6">
@@ -263,15 +340,15 @@ export default function PositionsPage() {
             <BriefcaseIcon className="h-8 w-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Job Positions</h1>
-              <p className="text-gray-600">Manage roles and position requirements across departments</p>
+              <p className="text-gray-600">Manage employee positions and assignments</p>
             </div>
           </div>
-          <button
+          <button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
-            <PlusIcon className="h-5 w-5" />
-            <span>New Position</span>
+            <PlusIcon className="w-5 h-5" />
+            Create Positions
           </button>
         </div>
       </div>
@@ -282,7 +359,7 @@ export default function PositionsPage() {
           <div className="flex items-center">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-600">Total Positions</p>
-              <p className="text-2xl font-bold text-gray-900">{positions.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
             <BriefcaseIcon className="h-8 w-8 text-blue-600" />
           </div>
@@ -291,8 +368,8 @@ export default function PositionsPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600">Active Positions</p>
-              <p className="text-2xl font-bold text-green-600">{activePositions.length}</p>
+              <p className="text-sm font-medium text-gray-600">Filled Positions</p>
+              <p className="text-2xl font-bold text-green-600">{stats.filled}</p>
             </div>
             <CheckCircleIcon className="h-8 w-8 text-green-600" />
           </div>
@@ -301,32 +378,32 @@ export default function PositionsPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600">Departments</p>
-              <p className="text-2xl font-bold text-purple-600">{mockDepartments.length}</p>
+              <p className="text-sm font-medium text-gray-600">Vacant Positions</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.vacant}</p>
             </div>
-            <BuildingOfficeIcon className="h-8 w-8 text-purple-600" />
+            <XCircleIcon className="h-8 w-8 text-orange-600" />
           </div>
         </div>
         
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600">Salary Ranges</p>
-              <p className="text-2xl font-bold text-orange-600">{positions.filter(p => p.salaryRange).length}</p>
+              <p className="text-sm font-medium text-gray-600">Active</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.active}</p>
             </div>
-            <CurrencyDollarIcon className="h-8 w-8 text-orange-600" />
+            <UserGroupIcon className="h-8 w-8 text-purple-600" />
           </div>
         </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search positions..."
+              placeholder="Search by title, department, or employee ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -334,209 +411,291 @@ export default function PositionsPage() {
           </div>
           
           <select
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Departments</option>
-            {mockDepartments.map((dept) => (
-              <option key={dept.id} value={dept.id}>
-                {dept.name}
-              </option>
-            ))}
-          </select>
-          
-          <select
-            value={selectedLevel}
-            onChange={(e) => setSelectedLevel(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Levels</option>
-            {uniqueLevels.map((level) => (
-              <option key={level} value={level}>
-                {level}
-              </option>
-            ))}
-          </select>
-          
-          <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'filled' | 'vacant')}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">All Positions</option>
+            <option value="filled">Filled Only</option>
+            <option value="vacant">Vacant Only</option>
           </select>
         </div>
       </div>
 
-      {/* Positions List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Positions ({filteredPositions.length})
-          </h2>
-        </div>
-        
-        <div className="divide-y divide-gray-200">
-          {filteredPositions.map((position) => (
-            <div key={position.id} className="p-6 hover:bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{position.title}</h3>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      position.isActive 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {position.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                    {position.level && (
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        {position.level}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <p className="text-gray-600 mb-2">{position.description}</p>
-                  
-                  <div className="flex items-center space-x-6 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <BuildingOfficeIcon className="h-4 w-4" />
-                      <span>{getDepartmentName(position.departmentId)}</span>
-                    </div>
-                    {position.salaryRange && (
-                      <div className="flex items-center space-x-1">
-                        <CurrencyDollarIcon className="h-4 w-4" />
-                        <span>
-                          {formatCurrency(position.salaryRange.min)} - {formatCurrency(position.salaryRange.max)}
-                        </span>
+      {/* Positions Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">Loading positions...</p>
+          </div>
+        ) : filteredPositions.length === 0 ? (
+          <div className="p-12 text-center">
+            <BriefcaseIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No positions found</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {searchTerm ? 'Try adjusting your search criteria.' : 'No positions available.'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Seat ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Job Title
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Department
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Employee ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Open From
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredPositions.map((position) => (
+                  <tr key={position.unique_seat_id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-xs font-mono text-gray-900">
+                        {position.unique_seat_id}
                       </div>
-                    )}
-                    {position.requirements && (
-                      <span>{position.requirements.length} requirements</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleViewDetails(position)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                    title="View Details"
-                  >
-                    <EyeIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
-                    title="Edit Position"
-                  >
-                    <PencilSquareIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-          
-          {filteredPositions.length === 0 && (
-            <div className="p-12 text-center">
-              <BriefcaseIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No positions found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Try adjusting your search criteria or create a new position.
-              </p>
-            </div>
-          )}
-        </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {position.employee_job_title || 'N/A'}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {position.employment_status}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{position.department || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{position.employee_entity_id || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex flex-col space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500 w-12">Open:</span>
+                            <button
+                              onClick={() => toggleFilledStatus(position.unique_seat_id, position.is_filled)}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
+                                !position.is_filled ? 'bg-orange-500' : 'bg-gray-300'
+                              }`}
+                              title={position.is_filled ? 'Filled - Click to mark as open' : 'Open - Click to mark as filled'}
+                            >
+                              <span
+                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                  !position.is_filled ? 'translate-x-5' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500 w-12">Active:</span>
+                            <button
+                              onClick={() => toggleActiveStatus(position.unique_seat_id, position.is_active)}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
+                                position.is_active ? 'bg-blue-600' : 'bg-gray-300'
+                              }`}
+                              title={position.is_active ? 'Active - Click to deactivate' : 'Inactive - Click to activate'}
+                            >
+                              <span
+                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                  position.is_active ? 'translate-x-5' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {position.is_filled && position.employment_start_date 
+                          ? formatDate(position.employment_start_date)
+                          : position.is_filled 
+                          ? 'N/A' 
+                          : 'Open'}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Position Detail Modal */}
-      {isDetailModalOpen && selectedPosition && (
+      {/* Results Count */}
+      {!loading && filteredPositions.length > 0 && (
+        <div className="mt-4 text-sm text-gray-600 text-center">
+          Showing {filteredPositions.length} of {positions.length} positions
+        </div>
+      )}
+
+      {/* Create Positions Modal */}
+      {isCreateModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">{selectedPosition.title}</h2>
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Create Positions</h2>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {/* Debug info */}
+              {platformRoles.length === 0 && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                  ⚠️ No platform roles loaded. Check console for errors. Total roles: {platformRoles.length}
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                {seatRoles.map((role, index) => {
+                  const searchTerm = roleSearchTerms[role.id] || '';
+                  const filteredRoles = platformRoles.filter(pr =>
+                    pr.role_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    pr.role_code.toLowerCase().includes(searchTerm.toLowerCase())
+                  );
+                  
+                  console.log('[Modal] Role dropdown state:', {
+                    roleId: role.id,
+                    searchTerm,
+                    totalPlatformRoles: platformRoles.length,
+                    filteredCount: filteredRoles.length,
+                    showDropdown: showRoleDropdown[role.id],
+                    selectedJobTitle: role.job_title
+                  });
+                  
+                  return (
+                    <div key={role.id} className="flex gap-4 items-start p-4 bg-gray-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-2 gap-4">
+                        <div className="relative">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Job Role *
+                          </label>
+                          <input
+                            type="text"
+                            value={role.job_title || roleSearchTerms[role.id] || ''}
+                            onChange={(e) => {
+                              setRoleSearchTerms({ ...roleSearchTerms, [role.id]: e.target.value });
+                              setShowRoleDropdown({ ...showRoleDropdown, [role.id]: true });
+                              if (!e.target.value) {
+                                updateSeatRole(role.id, 'job_title', '');
+                              }
+                            }}
+                            onFocus={() => setShowRoleDropdown({ ...showRoleDropdown, [role.id]: true })}
+                            placeholder="Search for a role..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          {showRoleDropdown[role.id] && filteredRoles.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {filteredRoles.map((pr) => (
+                                <button
+                                  key={pr.role_code}
+                                  type="button"
+                                  onClick={() => {
+                                    updateSeatRole(role.id, 'job_title', pr.role_name);
+                                    setRoleSearchTerms({ ...roleSearchTerms, [role.id]: '' });
+                                    setShowRoleDropdown({ ...showRoleDropdown, [role.id]: false });
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-medium text-gray-900">{pr.role_name}</div>
+                                  <div className="text-xs text-gray-500">{pr.role_code}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Count *
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={role.count}
+                            onChange={(e) => updateSeatRole(role.id, 'count', parseInt(e.target.value) || 1)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                      {seatRoles.length > 1 && (
+                        <button
+                          onClick={() => removeSeatRole(role.id)}
+                          className="mt-7 text-red-500 hover:text-red-700"
+                          title="Remove role"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={addSeatRole}
+                className="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center gap-2"
+              >
+                <PlusIcon className="w-5 h-5" />
+                Add Another Role
+              </button>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+              <div className="text-sm text-gray-600">
+                Total positions to create: <span className="font-semibold text-gray-900">{totalSeatsToCreate}</span>
+              </div>
+              <div className="flex gap-3">
                 <button
-                  onClick={() => setIsDetailModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  disabled={creating}
                 >
-                  <XCircleIcon className="h-6 w-6" />
+                  Cancel
+                </button>
+                <button
+                  onClick={createSeats}
+                  disabled={creating || totalSeatsToCreate === 0}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {creating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    <>Create {totalSeatsToCreate} Position{totalSeatsToCreate !== 1 ? 's' : ''}</>
+                  )}
                 </button>
               </div>
-            </div>
-            
-            <div className="p-6 space-y-6">
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-                <p className="text-gray-900">{selectedPosition.description || 'No description available'}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Department</h3>
-                  <p className="text-gray-900">{getDepartmentName(selectedPosition.departmentId)}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Level</h3>
-                  <p className="text-gray-900">{selectedPosition.level || 'Not specified'}</p>
-                </div>
-              </div>
-              
-              {selectedPosition.salaryRange && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Salary Range</h3>
-                  <p className="text-gray-900">
-                    {formatCurrency(selectedPosition.salaryRange.min)} - {formatCurrency(selectedPosition.salaryRange.max)}
-                  </p>
-                </div>
-              )}
-              
-              {selectedPosition.requirements && selectedPosition.requirements.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Requirements</h3>
-                  <ul className="list-disc list-inside space-y-1 text-gray-900">
-                    {selectedPosition.requirements.map((req, index) => (
-                      <li key={index}>{req}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Status</h3>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    selectedPosition.isActive 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedPosition.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Created</h3>
-                  <p className="text-gray-900">
-                    {new Date(selectedPosition.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={() => setIsDetailModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Edit Position
-              </button>
             </div>
           </div>
         </div>

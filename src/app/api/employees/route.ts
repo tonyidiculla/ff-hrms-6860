@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
     const department = searchParams.get('department')
     const status = searchParams.get('status') || 'active'
 
+    console.log('[HRMS Employees API] Fetching employees for entity:', entityId);
+
     if (!entityId) {
       return NextResponse.json(
         { error: 'entity_id parameter is required' },
@@ -37,6 +39,8 @@ export async function GET(request: NextRequest) {
 
     // Check subscription access
     const accessCheck = await validateHRAccess(entityId)
+    console.log('[HRMS Employees API] Access check result:', accessCheck);
+    
     if (!accessCheck.allowed) {
       return NextResponse.json(
         { 
@@ -48,43 +52,81 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Fetch employees from employee_seat_assignment with profile data
     let query = supabaseAdmin
-      .from('employees')
+      .from('employee_seat_assignment')
       .select(`
         id,
-        entity_platform_id,
-        employee_id,
-        first_name,
-        last_name,
-        email,
-        phone,
-        department,
-        job_title,
-        employment_type,
-        hire_date,
-        status,
-        created_at,
-        updated_at
+        employee_entity_id,
+        user_platform_id,
+        entity_role_id,
+        is_active,
+        assigned_at,
+        assigned_by,
+        profiles_with_auth (
+          user_id,
+          user_platform_id,
+          first_name,
+          last_name,
+          email,
+          phone_number,
+          avatar_storage
+        )
       `)
-      .eq('entity_platform_id', entityId)
+      .eq('employee_entity_id', entityId)
+      .eq('is_active', true)
 
-    if (department) {
-      query = query.eq('department', department)
-    }
+    const { data: employeeAssignments, error } = await query.order('assigned_at', { ascending: false })
 
-    if (status) {
-      query = query.eq('status', status)
-    }
-
-    const { data: employees, error } = await query.order('last_name', { ascending: true })
+    console.log('[HRMS Employees API] Query result:', { 
+      count: employeeAssignments?.length, 
+      error: error?.message,
+      entityId 
+    });
 
     if (error) {
-      console.error('Error fetching employees:', error)
+      console.error('[HRMS Employees API] Error fetching employees:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch employees', details: error.message },
+        { status: 500 }
+      )
+    }
+
+    console.log('[HRMS Employees API] Raw employee assignments:', JSON.stringify(employeeAssignments, null, 2));
+
+    // Transform the data to match the expected employee structure
+    const employees = employeeAssignments?.map((assignment: any) => ({
+      id: assignment.id,
+      entity_platform_id: assignment.employee_entity_id,
+      employee_id: assignment.user_platform_id || '',
+      first_name: assignment.profiles_with_auth?.first_name || '',
+      last_name: assignment.profiles_with_auth?.last_name || '',
+      email: assignment.profiles_with_auth?.email || '',
+      phone: assignment.profiles_with_auth?.phone_number || '',
+      department: 'General', // Default department until we fix role relationship
+      job_title: 'Employee', // Default job title until we fix role relationship
+      employment_type: 'full_time',
+      hire_date: assignment.assigned_at,
+      status: assignment.is_active ? 'active' : 'inactive',
+      avatar_storage: assignment.profiles_with_auth?.avatar_storage,
+      role_name: null,
+      role_description: null,
+      created_at: assignment.assigned_at,
+      updated_at: assignment.assigned_at
+    })) || []
+
+    if (error) {
+      console.error('[HRMS Employees API] Error after transformation:', error)
       return NextResponse.json(
         { error: 'Failed to fetch employees' },
         { status: 500 }
       )
     }
+
+    console.log('[HRMS Employees API] Returning employees:', { 
+      count: employees.length,
+      sample: employees[0] 
+    });
 
     return NextResponse.json({
       employees,
