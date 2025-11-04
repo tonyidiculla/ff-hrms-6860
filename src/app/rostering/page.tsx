@@ -9,11 +9,14 @@ import {
   AdjustmentsHorizontalIcon,
   ArrowsRightLeftIcon,
   DocumentTextIcon,
-  CogIcon
+  CogIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { HRMSLayout, ContentCard, MetricsGrid } from '@/components/layout/HRMSLayout';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { TabItem } from '@/types/layout';
+import { useWeeklyRoster } from '@/hooks/useRostering';
+import { DAY_NAMES } from '@/types/rostering';
 
 const tabs: TabItem[] = [
   { 
@@ -48,17 +51,25 @@ const headerProps = {
 };
 
 export default function RosteringPage() {
-  const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [showFilters, setShowFilters] = useState(false);
   const [showAddShift, setShowAddShift] = useState(false);
 
-  // Mock data for demonstration
-  const shifts = [
-    { id: 1, employee: 'Dr. Sarah Johnson', role: 'Veterinarian', date: '2025-10-28', time: '08:00 - 16:00', status: 'confirmed' },
-    { id: 2, employee: 'Mike Chen', role: 'Vet Tech', date: '2025-10-28', time: '09:00 - 17:00', status: 'pending' },
-    { id: 3, employee: 'Emily Rodriguez', role: 'Receptionist', date: '2025-10-29', time: '07:30 - 15:30', status: 'confirmed' },
-    { id: 4, employee: 'Dr. James Wilson', role: 'Veterinarian', date: '2025-10-29', time: '16:00 - 00:00', status: 'confirmed' },
-  ];
+  // Use the database-connected rostering hook
+  const {
+    selectedWeek,
+    weeklyRoster,
+    staffMembers,
+    metrics,
+    loading,
+    loadingRoster,
+    error,
+    navigateToPreviousWeek,
+    navigateToNextWeek,
+    navigateToCurrentWeek,
+    upsertWeeklySchedule,
+    createScheduleException,
+    createStaffMember
+  } = useWeeklyRoster();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -69,38 +80,44 @@ export default function RosteringPage() {
     }
   };
 
+  // Format the selected week for display
+  const formatWeekDisplay = (date: Date) => {
+    const weekEnd = new Date(date);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'long', 
+      day: 'numeric'
+    };
+    
+    if (date.getFullYear() !== weekEnd.getFullYear()) {
+      return `${date.toLocaleDateString('en-US', { ...options, year: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { ...options, year: 'numeric' })}`;
+    } else if (date.getMonth() !== weekEnd.getMonth()) {
+      return `${date.toLocaleDateString('en-US', options)} - ${weekEnd.toLocaleDateString('en-US', options)}, ${date.getFullYear()}`;
+    } else {
+      return `${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - ${weekEnd.getDate()}, ${date.getFullYear()}`;
+    }
+  };
+
   // Handler functions
-  const handlePreviousWeek = () => {
-    const newDate = new Date(selectedWeek);
-    newDate.setDate(newDate.getDate() - 7);
-    setSelectedWeek(newDate);
-    console.log('Previous week selected:', newDate);
-  };
-
-  const handleNextWeek = () => {
-    const newDate = new Date(selectedWeek);
-    newDate.setDate(newDate.getDate() + 7);
-    setSelectedWeek(newDate);
-    console.log('Next week selected:', newDate);
-  };
-
-  const handleToday = () => {
-    setSelectedWeek(new Date());
-    console.log('Today selected');
-  };
-
   const handleAddShift = () => {
     setShowAddShift(true);
     console.log('Add shift modal opened');
   };
 
-  const handleEditShift = (shiftId: number) => {
+  const handleEditShift = (shiftId: string) => {
     console.log('Edit shift:', shiftId);
+    // TODO: Open edit modal
   };
 
-  const handleDeleteShift = (shiftId: number) => {
+  const handleDeleteShift = async (scheduleId: string) => {
     if (confirm('Are you sure you want to delete this shift?')) {
-      console.log('Delete shift:', shiftId);
+      try {
+        // TODO: Implement delete functionality
+        console.log('Delete shift:', scheduleId);
+      } catch (error) {
+        console.error('Error deleting shift:', error);
+      }
     }
   };
 
@@ -118,33 +135,43 @@ export default function RosteringPage() {
 
   return (
     <HRMSLayout header={headerProps} tabs={tabs}>
+      {/* Error Display */}
+      {error && (
+        <ContentCard title="Error" className="mb-6">
+          <div className="flex items-center p-4 bg-red-50 border border-red-200 rounded-lg">
+            <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-3" />
+            <p className="text-red-800">{error}</p>
+          </div>
+        </ContentCard>
+      )}
+
       {/* Rostering Metrics */}
       <MetricsGrid>
         <MetricCard
           title="This Week Shifts"
-          value="24"
-          trend={{ direction: 'up', value: 3 }}
+          value={metrics?.shifts_this_week?.toString() || '0'}
+          trend={{ direction: 'up', value: 0 }}
           icon={CalendarIcon}
           color="blue"
         />
         <MetricCard
           title="Staff Scheduled"
-          value="12"
-          trend={{ direction: 'up', value: 2 }}
+          value={metrics?.active_staff?.toString() || '0'}
+          trend={{ direction: 'up', value: 0 }}
           icon={UserGroupIcon}
           color="green"
         />
         <MetricCard
           title="Total Hours"
-          value="192"
-          trend={{ direction: 'up', value: 8 }}
+          value={metrics?.total_hours_this_week?.toString() || '0'}
+          trend={{ direction: 'up', value: 0 }}
           icon={ClockIcon}
           color="purple"
         />
         <MetricCard
           title="Coverage Rate"
-          value="98%"
-          trend={{ direction: 'up', value: 2 }}
+          value={`${metrics?.coverage_rate || 0}%`}
+          trend={{ direction: 'up', value: 0 }}
           icon={AdjustmentsHorizontalIcon}
           color="green"
         />
@@ -152,12 +179,12 @@ export default function RosteringPage() {
 
       {/* Week Navigation */}
       <ContentCard 
-        title="Week of October 28, 2025"
+        title={`Week of ${formatWeekDisplay(selectedWeek)}`}
         headerActions={
           <div className="flex gap-2">
-            <button onClick={handlePreviousWeek} className="hrms-btn hrms-btn-secondary text-sm">Previous</button>
-            <button onClick={handleToday} className="hrms-btn hrms-btn-secondary text-sm">Today</button>
-            <button onClick={handleNextWeek} className="hrms-btn hrms-btn-secondary text-sm">Next</button>
+            <button onClick={navigateToPreviousWeek} className="hrms-btn hrms-btn-secondary text-sm">Previous</button>
+            <button onClick={navigateToCurrentWeek} className="hrms-btn hrms-btn-secondary text-sm">Today</button>
+            <button onClick={navigateToNextWeek} className="hrms-btn hrms-btn-secondary text-sm">Next</button>
             <button onClick={handleAddShift} className="hrms-btn hrms-btn-primary text-sm">
               <PlusIcon className="w-4 h-4 mr-1" />
               Add Shift
@@ -191,41 +218,92 @@ export default function RosteringPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {shifts.map((shift) => (
-                <tr key={shift.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {shift.employee}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {shift.role}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(shift.date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {shift.time}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(shift.status)}`}>
-                      {shift.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button 
-                      onClick={() => handleEditShift(shift.id)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteShift(shift.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+              {loadingRoster ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                      Loading roster data...
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : weeklyRoster.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    No roster data available for this week.
+                    <div className="mt-2">
+                      <button 
+                        onClick={handleAddShift} 
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Create your first shift
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                weeklyRoster.flatMap((daySchedule) =>
+                  daySchedule.staff_schedules
+                    .filter(staffSchedule => staffSchedule.regular_schedule || staffSchedule.bookings.length > 0)
+                    .map((staffSchedule, index) => {
+                      const schedule = staffSchedule.regular_schedule;
+                      const staff = staffSchedule.staff_member;
+                      const hasExceptions = staffSchedule.exceptions.length > 0;
+                      const hasBookings = staffSchedule.bookings.length > 0;
+                      
+                      return (
+                        <tr key={`${daySchedule.date}-${staff.id}-${index}`} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {staff.full_name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {staff.role_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(daySchedule.date).toLocaleDateString()}
+                            <div className="text-xs text-gray-400">
+                              {DAY_NAMES[daySchedule.day_of_week]}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {schedule ? `${schedule.start_time} - ${schedule.end_time}` : 'No regular schedule'}
+                            {hasBookings && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                {staffSchedule.bookings.length} appointment(s)
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              hasExceptions ? 'bg-yellow-100 text-yellow-800' : 
+                              schedule?.is_available ? 'bg-green-100 text-green-800' : 
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {hasExceptions ? 'Exception' : 
+                               schedule?.is_available ? 'Available' : 'Unavailable'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button 
+                              onClick={() => handleEditShift(schedule?.id || staff.id)}
+                              className="text-indigo-600 hover:text-indigo-900 mr-3"
+                            >
+                              Edit
+                            </button>
+                            {schedule && (
+                              <button 
+                                onClick={() => handleDeleteShift(schedule.id)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                )
+              )}
             </tbody>
           </table>
         </div>
