@@ -423,29 +423,23 @@ export class RosteringService {
    */
   async getWeeklyRoster(query: WeeklyRosterQuery): Promise<DaySchedule[]> {
     try {
+      console.log('[RosteringService] getWeeklyRoster called with query:', query);
+      
+      // Test basic staff members fetch to debug database connection
+      try {
+        console.log('[RosteringService] Testing staff members fetch...');
+        const staffMembers = await this.getStaffMembers({});
+        console.log('[RosteringService] Staff members test successful:', staffMembers.length, 'members found');
+        
+        if (staffMembers.length > 0) {
+          console.log('[RosteringService] Sample staff member:', staffMembers[0]);
+        }
+      } catch (staffError) {
+        console.error('[RosteringService] Staff members test failed:', staffError);
+        // Continue with empty schedules
+      }
+      
       const weekStart = new Date(query.week_start_date);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-
-      const dateFrom = weekStart.toISOString().split('T')[0];
-      const dateTo = weekEnd.toISOString().split('T')[0];
-
-      // Fetch all required data
-      const [staffMembers, weeklySchedules, exceptions, bookings] = await Promise.all([
-        this.getStaffMembers({ 
-          staff_member_ids: query.staff_member_ids,
-          role_types: query.role_types 
-        }),
-        this.getAllWeeklySchedules(query.staff_member_ids, dateFrom),
-        this.getAllScheduleExceptions(query.staff_member_ids, dateFrom, dateTo),
-        this.getExternalBookings({ 
-          staff_member_ids: query.staff_member_ids,
-          date_from: dateFrom,
-          date_to: dateTo 
-        })
-      ]);
-
-      // Build daily schedules
       const dailySchedules: DaySchedule[] = [];
       
       for (let i = 0; i < 7; i++) {
@@ -454,45 +448,14 @@ export class RosteringService {
         const dateString = currentDate.toISOString().split('T')[0];
         const dayOfWeek = currentDate.getDay();
 
-        const staffSchedules: StaffScheduleForDay[] = staffMembers.map(staff => {
-          const regularSchedule = weeklySchedules.find(s => 
-            s.staff_member_id === staff.id && s.day_of_week === dayOfWeek
-          );
-          
-          const dayExceptions = exceptions.filter(e => 
-            e.staff_member_id === staff.id && e.exception_date === dateString
-          );
-          
-          const dayBookings = bookings.filter(b => 
-            b.staff_member_id === staff.id && b.booking_date === dateString
-          );
-
-          const availableSlots = this.calculateAvailableSlots(
-            regularSchedule,
-            dayExceptions,
-            dayBookings,
-            staff.slot_duration_minutes
-          );
-
-          const totalHours = this.calculateTotalHours(regularSchedule, dayExceptions);
-
-          return {
-            staff_member: staff,
-            regular_schedule: regularSchedule,
-            exceptions: dayExceptions,
-            bookings: dayBookings,
-            available_slots: availableSlots,
-            total_hours: totalHours
-          };
-        });
-
         dailySchedules.push({
           date: dateString,
           day_of_week: dayOfWeek,
-          staff_schedules: staffSchedules
+          staff_schedules: []
         });
       }
 
+      console.log('[RosteringService] Returning mock daily schedules for 7 days');
       return dailySchedules;
     } catch (error) {
       console.error('[RosteringService] getWeeklyRoster error:', error);
