@@ -59,6 +59,24 @@ export function getRelativeTime(date: Date | string | null | undefined): string 
 }
 
 /**
+ * Calculate the difference in days between two dates
+ * @param startDate - The start date
+ * @param endDate - The end date
+ * @returns Number of days difference (positive if endDate is later than startDate)
+ */
+export function dateDiffInDays(startDate: Date | string, endDate: Date | string): number {
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return 0;
+  }
+  
+  const diffInMs = end.getTime() - start.getTime();
+  return Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+}
+
+/**
  * Format a number as currency
  * @param amount - The amount to format
  * @param currency - The currency code (default: 'USD')

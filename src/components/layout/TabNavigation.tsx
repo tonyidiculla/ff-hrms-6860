@@ -17,8 +17,8 @@ export function TabNavigation({ tabs, className = '' }: TabNavigationProps) {
     <div className={`border-b border-gray-200 mb-8 ${className}`}>
       <nav className="-mb-px flex space-x-8" aria-label="Tabs">
         {tabs.map((tab) => {
-          const isActive = pathname === tab.href || 
-            (pathname.startsWith(tab.href) && tab.href !== '/');
+          // Check if current page matches tab
+          const isActive = pathname === tab.href;
           
           const TabIcon = tab.icon;
           

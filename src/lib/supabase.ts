@@ -9,17 +9,9 @@ export const supabase = supabaseClientManager.getClient({
   },
 });
 
-// Admin client for server-side operations
-export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+// Note: Service role key removed from .env.local
+// For server-side operations requiring admin access, create client directly in API routes if needed
+// Most operations should use RLS with anon key instead
 
 // Helper functions for ff-hrms-6860
 export async function getUserHospitalId(userId: string): Promise<string | null> {

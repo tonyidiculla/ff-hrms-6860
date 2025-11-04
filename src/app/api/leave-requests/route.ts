@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { validateHRAccess } from '@/lib/subscription'
 import { z } from 'zod'
+
+// Regular client - will use RLS for data access control
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 const createLeaveRequestSchema = z.object({
   entity_platform_id: z.string().uuid(),
@@ -41,7 +53,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let query = supabaseAdmin
+    let query = supabase
       .from('employee_leave_requests')
       .select(`
         id,
@@ -117,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify employee exists and belongs to this entity
-    const { data: employee } = await supabaseAdmin
+    const { data: employee } = await supabase
       .from('employees')
       .select('id')
       .eq('id', validatedData.employee_id)
@@ -133,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create leave request
-    const { data: leaveRequest, error } = await supabaseAdmin
+    const { data: leaveRequest, error } = await supabase
       .from('employee_leave_requests')
       .insert([validatedData])
       .select()

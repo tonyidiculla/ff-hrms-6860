@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
-import { validateHRAccess, extractEntityPlatformId } from '@/lib/subscription'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 
 // Validation schema for employee creation
@@ -23,12 +23,23 @@ const createEmployeeSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    
+    // Create Supabase client with user's session (respects RLS)
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
     const { searchParams } = new URL(request.url)
     const entityId = searchParams.get('entity_id')
-    const department = searchParams.get('department')
-    const status = searchParams.get('status') || 'active'
-
-    console.log('[HRMS Employees API] Fetching employees for entity:', entityId);
 
     if (!entityId) {
       return NextResponse.json(
@@ -37,96 +48,81 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check subscription access
-    const accessCheck = await validateHRAccess(entityId)
-    console.log('[HRMS Employees API] Access check result:', accessCheck);
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (!accessCheck.allowed) {
-      return NextResponse.json(
-        { 
-          error: 'Access denied to HR module',
-          reason: accessCheck.error,
-          subscription: accessCheck.subscription 
-        },
-        { status: 403 }
-      )
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch employees from employee_seat_assignment with profile data
-    let query = supabaseAdmin
+    // Fetch employee seat assignments - RLS will filter to user's allowed entities
+    // Only show filled positions (seats with employees assigned)
+    const { data: employeeAssignments, error } = await supabase
       .from('employee_seat_assignment')
       .select(`
         id,
-        employee_entity_id,
+        entity_platform_id,
         user_platform_id,
-        entity_role_id,
+        platform_role_id,
+        employee_job_title,
+        department,
+        employment_status,
+        employment_start_date,
+        employee_email,
+        employee_contact,
         is_active,
         assigned_at,
-        assigned_by,
-        profiles_with_auth (
-          user_id,
-          user_platform_id,
-          first_name,
-          last_name,
-          email,
-          phone_number,
-          avatar_storage
-        )
+        assigned_by
       `)
-      .eq('employee_entity_id', entityId)
+      .eq('entity_platform_id', entityId)
       .eq('is_active', true)
-
-    const { data: employeeAssignments, error } = await query.order('assigned_at', { ascending: false })
-
-    console.log('[HRMS Employees API] Query result:', { 
-      count: employeeAssignments?.length, 
-      error: error?.message,
-      entityId 
-    });
+      .eq('is_filled', true)
+      .order('assigned_at', { ascending: false })
 
     if (error) {
-      console.error('[HRMS Employees API] Error fetching employees:', error)
       return NextResponse.json(
         { error: 'Failed to fetch employees', details: error.message },
         { status: 500 }
       )
     }
 
-    console.log('[HRMS Employees API] Raw employee assignments:', JSON.stringify(employeeAssignments, null, 2));
-
-    // Transform the data to match the expected employee structure
-    const employees = employeeAssignments?.map((assignment: any) => ({
-      id: assignment.id,
-      entity_platform_id: assignment.employee_entity_id,
-      employee_id: assignment.user_platform_id || '',
-      first_name: assignment.profiles_with_auth?.first_name || '',
-      last_name: assignment.profiles_with_auth?.last_name || '',
-      email: assignment.profiles_with_auth?.email || '',
-      phone: assignment.profiles_with_auth?.phone_number || '',
-      department: 'General', // Default department until we fix role relationship
-      job_title: 'Employee', // Default job title until we fix role relationship
-      employment_type: 'full_time',
-      hire_date: assignment.assigned_at,
-      status: assignment.is_active ? 'active' : 'inactive',
-      avatar_storage: assignment.profiles_with_auth?.avatar_storage,
-      role_name: null,
-      role_description: null,
-      created_at: assignment.assigned_at,
-      updated_at: assignment.assigned_at
-    })) || []
-
-    if (error) {
-      console.error('[HRMS Employees API] Error after transformation:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch employees' },
-        { status: 500 }
-      )
+    // Fetch profiles separately for all user_platform_ids
+    const userPlatformIds = employeeAssignments?.map((a: any) => a.user_platform_id).filter(Boolean) || [];
+    
+    let profilesMap = new Map();
+    if (userPlatformIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles_with_auth')
+        .select('user_platform_id, first_name, last_name, avatar_storage, phone')
+        .in('user_platform_id', userPlatformIds);
+      
+      profiles?.forEach((p: any) => profilesMap.set(p.user_platform_id, p));
     }
 
-    console.log('[HRMS Employees API] Returning employees:', { 
-      count: employees.length,
-      sample: employees[0] 
-    });
+    // Transform the data to match the expected employee structure
+    const employees = employeeAssignments?.map((assignment: any) => {
+      const profile = profilesMap.get(assignment.user_platform_id);
+      
+      return {
+        id: assignment.id,
+        entity_platform_id: assignment.entity_platform_id,
+        employee_id: assignment.user_platform_id || '',
+        first_name: profile?.first_name || 'Unknown',
+        last_name: profile?.last_name || 'User',
+        email: assignment.employee_email || assignment.user_platform_id,
+        phone: assignment.employee_contact || profile?.phone || '',
+        department: assignment.department || 'Unassigned',
+        job_title: assignment.employee_job_title || 'Employee',
+        employment_type: 'full_time',
+        hire_date: assignment.employment_start_date || assignment.assigned_at,
+        status: assignment.employment_status || (assignment.is_active ? 'active' : 'inactive'),
+        avatar_storage: profile?.avatar_storage,
+        role_name: null,
+        role_description: null,
+        created_at: assignment.assigned_at,
+        updated_at: assignment.assigned_at
+      };
+    }) || []
 
     return NextResponse.json({
       employees,
@@ -144,26 +140,35 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => 
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+
+    // Verify authentication
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     
     // Validate input
     const validatedData = createEmployeeSchema.parse(body)
 
-    // Check subscription access
-    const accessCheck = await validateHRAccess(validatedData.entity_platform_id)
-    if (!accessCheck.allowed) {
-      return NextResponse.json(
-        { 
-          error: 'Access denied to HR module',
-          reason: accessCheck.error,
-          subscription: accessCheck.subscription 
-        },
-        { status: 403 }
-      )
-    }
-
-    // Check if employee_id already exists for this entity
-    const { data: existingEmployee } = await supabaseAdmin
+    // Check if employee_id already exists for this entity (RLS enforced)
+    const { data: existingEmployee } = await supabase
       .from('employees')
       .select('id')
       .eq('entity_platform_id', validatedData.entity_platform_id)
@@ -177,8 +182,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create new employee
-    const { data: employee, error } = await supabaseAdmin
+    // Create new employee (RLS enforced)
+    const { data: employee, error } = await supabase
       .from('employees')
       .insert([validatedData])
       .select()

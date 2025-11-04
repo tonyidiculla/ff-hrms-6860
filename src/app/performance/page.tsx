@@ -32,52 +32,40 @@ const headerProps = {
 export default function PerformancePage() {
   return (
     <HRMSLayout header={headerProps} tabs={tabs}>
-      <MetricsGrid>
-        <MetricCard
-          title="Active Goals"
-          value="156"
-          trend={{ direction: 'up', value: 12 }}
-          icon={ArrowTrendingUpIcon}
-          color="blue"
-        />
-        <MetricCard
-          title="Reviews Due"
-          value="8"
-          trend={{ direction: 'down', value: 3 }}
-          icon={DocumentChartBarIcon}
-          color="yellow"
-        />
-        <MetricCard
-          title="Feedback Received"
-          value="45"
-          trend={{ direction: 'up', value: 18 }}
-          icon={ChatBubbleLeftRightIcon}
-          color="green"
-        />
-        <MetricCard
-          title="Avg Rating"
-          value="4.2"
-          trend={{ direction: 'up', value: 0.3 }}
-          icon={ChartBarIcon}
-          color="purple"
-        />
-      </MetricsGrid>
-
-      <ContentCard title="Performance Overview">
+      <ContentCard title="Performance Management">
         <p className="text-gray-600 mb-6">
-          Manage goals, reviews, feedback, and performance analytics for your team.
+          Manage employee goals, conduct performance reviews, collect feedback, and analyze performance data across your organization.
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="font-medium text-blue-900 mb-2">Goal Completion Rate</h3>
-            <p className="text-2xl font-bold text-blue-600">78%</p>
-            <p className="text-sm text-blue-700">+5% from last quarter</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-blue-50 p-6 rounded-lg">
+            <ArrowTrendingUpIcon className="h-8 w-8 text-blue-600 mb-3" />
+            <h3 className="font-semibold text-blue-900 mb-2">Goal Management</h3>
+            <p className="text-sm text-blue-700 mb-4">Set, track, and manage employee goals and objectives</p>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-blue-600">156 active goals</span>
+              <span className="text-xs text-blue-600">78% completion rate</span>
+            </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="font-medium text-green-900 mb-2">Review Completion</h3>
-            <p className="text-2xl font-bold text-green-600">92%</p>
-            <p className="text-sm text-green-700">On track for Q4</p>
+          
+          <div className="bg-green-50 p-6 rounded-lg">
+            <DocumentChartBarIcon className="h-8 w-8 text-green-600 mb-3" />
+            <h3 className="font-semibold text-green-900 mb-2">Performance Reviews</h3>
+            <p className="text-sm text-green-700 mb-4">Conduct regular performance evaluations and assessments</p>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-green-600">8 reviews due</span>
+              <span className="text-xs text-green-600">92% completion</span>
+            </div>
+          </div>
+          
+          <div className="bg-purple-50 p-6 rounded-lg">
+            <ChatBubbleLeftRightIcon className="h-8 w-8 text-purple-600 mb-3" />
+            <h3 className="font-semibold text-purple-900 mb-2">Feedback & Communication</h3>
+            <p className="text-sm text-purple-700 mb-4">Gather and manage ongoing feedback from team members</p>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-purple-600">45 feedback items</span>
+              <span className="text-xs text-purple-600">4.2 avg rating</span>
+            </div>
           </div>
         </div>
       </ContentCard>

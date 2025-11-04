@@ -7,10 +7,50 @@ import {
   ClockIcon,
   PlusIcon,
   AdjustmentsHorizontalIcon,
+  ArrowsRightLeftIcon,
+  DocumentTextIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
+import { HRMSLayout, ContentCard, MetricsGrid } from '@/components/layout/HRMSLayout';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { TabItem } from '@/types/layout';
+
+const tabs: TabItem[] = [
+  { 
+    name: 'Schedule Overview', 
+    href: '/rostering',
+    icon: CalendarIcon
+  },
+  { 
+    name: 'Employee Requests', 
+    href: '/rostering/requests',
+    icon: ArrowsRightLeftIcon
+  },
+  { 
+    name: 'Shift Templates', 
+    href: '/rostering/templates',
+    icon: DocumentTextIcon
+  },
+  { 
+    name: 'Settings', 
+    href: '/rostering/settings',
+    icon: CogIcon
+  },
+];
+
+const headerProps = {
+  title: "Staff Rostering",
+  subtitle: "Manage staff schedules, shifts, availability, and employee schedule requests",
+  breadcrumbs: [
+    { name: 'HRMS', href: '/' },
+    { name: 'Rostering' }
+  ]
+};
 
 export default function RosteringPage() {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
+  const [showFilters, setShowFilters] = useState(false);
+  const [showAddShift, setShowAddShift] = useState(false);
 
   // Mock data for demonstration
   const shifts = [
@@ -29,112 +69,102 @@ export default function RosteringPage() {
     }
   };
 
+  // Handler functions
+  const handlePreviousWeek = () => {
+    const newDate = new Date(selectedWeek);
+    newDate.setDate(newDate.getDate() - 7);
+    setSelectedWeek(newDate);
+    console.log('Previous week selected:', newDate);
+  };
+
+  const handleNextWeek = () => {
+    const newDate = new Date(selectedWeek);
+    newDate.setDate(newDate.getDate() + 7);
+    setSelectedWeek(newDate);
+    console.log('Next week selected:', newDate);
+  };
+
+  const handleToday = () => {
+    setSelectedWeek(new Date());
+    console.log('Today selected');
+  };
+
+  const handleAddShift = () => {
+    setShowAddShift(true);
+    console.log('Add shift modal opened');
+  };
+
+  const handleEditShift = (shiftId: number) => {
+    console.log('Edit shift:', shiftId);
+  };
+
+  const handleDeleteShift = (shiftId: number) => {
+    if (confirm('Are you sure you want to delete this shift?')) {
+      console.log('Delete shift:', shiftId);
+    }
+  };
+
+  const handleCreateTemplate = () => {
+    console.log('Create weekly template');
+  };
+
+  const handleManageAvailability = () => {
+    console.log('Manage availability');
+  };
+
+  const handleEmployeeRequests = () => {
+    window.location.href = '/rostering/requests';
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold leading-6 text-gray-900">Staff Rostering</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Manage staff schedules, shifts, and availability for optimal clinic operations.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-            <AdjustmentsHorizontalIcon className="w-4 h-4 mr-2" />
-            Filters
-          </button>
-          <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-            <PlusIcon className="w-4 h-4 mr-2" />
-            Add Shift
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CalendarIcon className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">This Week</dt>
-                  <dd className="text-lg font-medium text-gray-900">24 Shifts</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <UserGroupIcon className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Staff Scheduled</dt>
-                  <dd className="text-lg font-medium text-gray-900">12 People</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ClockIcon className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Hours</dt>
-                  <dd className="text-lg font-medium text-gray-900">192 hrs</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <AdjustmentsHorizontalIcon className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Coverage</dt>
-                  <dd className="text-lg font-medium text-green-600">98%</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <HRMSLayout header={headerProps} tabs={tabs}>
+      {/* Rostering Metrics */}
+      <MetricsGrid>
+        <MetricCard
+          title="This Week Shifts"
+          value="24"
+          trend={{ direction: 'up', value: 3 }}
+          icon={CalendarIcon}
+          color="blue"
+        />
+        <MetricCard
+          title="Staff Scheduled"
+          value="12"
+          trend={{ direction: 'up', value: 2 }}
+          icon={UserGroupIcon}
+          color="green"
+        />
+        <MetricCard
+          title="Total Hours"
+          value="192"
+          trend={{ direction: 'up', value: 8 }}
+          icon={ClockIcon}
+          color="purple"
+        />
+        <MetricCard
+          title="Coverage Rate"
+          value="98%"
+          trend={{ direction: 'up', value: 2 }}
+          icon={AdjustmentsHorizontalIcon}
+          color="green"
+        />
+      </MetricsGrid>
 
       {/* Week Navigation */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Week of October 28, 2025</h3>
+      <ContentCard 
+        title="Week of October 28, 2025"
+        headerActions={
           <div className="flex gap-2">
-            <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
-              Previous
-            </button>
-            <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
-              Today
-            </button>
-            <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
-              Next
+            <button onClick={handlePreviousWeek} className="hrms-btn hrms-btn-secondary text-sm">Previous</button>
+            <button onClick={handleToday} className="hrms-btn hrms-btn-secondary text-sm">Today</button>
+            <button onClick={handleNextWeek} className="hrms-btn hrms-btn-secondary text-sm">Next</button>
+            <button onClick={handleAddShift} className="hrms-btn hrms-btn-primary text-sm">
+              <PlusIcon className="w-4 h-4 mr-1" />
+              Add Shift
             </button>
           </div>
-        </div>
-
+        }
+      >
         {/* Shifts Table */}
         <div className="overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
@@ -181,10 +211,16 @@ export default function RosteringPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-indigo-600 hover:text-indigo-900 mr-3">
+                    <button 
+                      onClick={() => handleEditShift(shift.id)}
+                      className="text-indigo-600 hover:text-indigo-900 mr-3"
+                    >
                       Edit
                     </button>
-                    <button className="text-red-600 hover:text-red-900">
+                    <button 
+                      onClick={() => handleDeleteShift(shift.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
                       Delete
                     </button>
                   </td>
@@ -193,29 +229,37 @@ export default function RosteringPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </ContentCard>
 
       {/* Quick Actions */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+      <ContentCard title="Quick Actions">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
+          <button 
+            onClick={handleCreateTemplate}
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
+          >
             <CalendarIcon className="h-6 w-6 text-blue-600 mb-2" />
             <h4 className="font-medium text-gray-900">Create Weekly Template</h4>
             <p className="text-sm text-gray-500">Set up recurring shift patterns</p>
           </button>
-          <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
+          <button 
+            onClick={handleManageAvailability}
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
+          >
             <UserGroupIcon className="h-6 w-6 text-green-600 mb-2" />
             <h4 className="font-medium text-gray-900">Manage Availability</h4>
             <p className="text-sm text-gray-500">Update staff availability preferences</p>
           </button>
-          <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-            <ClockIcon className="h-6 w-6 text-purple-600 mb-2" />
-            <h4 className="font-medium text-gray-900">Time Off Requests</h4>
-            <p className="text-sm text-gray-500">Review and approve leave requests</p>
+          <button 
+            onClick={handleEmployeeRequests}
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
+          >
+            <ArrowsRightLeftIcon className="h-6 w-6 text-purple-600 mb-2" />
+            <h4 className="font-medium text-gray-900">Employee Requests</h4>
+            <p className="text-sm text-gray-500">View and manage shift change requests</p>
           </button>
         </div>
-      </div>
-    </div>
+      </ContentCard>
+    </HRMSLayout>
   );
 }

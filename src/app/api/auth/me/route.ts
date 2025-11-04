@@ -26,9 +26,22 @@ export async function GET(request: NextRequest) {
 
     if (!hmsResponse.ok) {
       console.error('[HRMS Auth Proxy] HMS auth failed:', hmsResponse.status);
+      const responseText = await hmsResponse.text();
+      console.error('[HRMS Auth Proxy] HMS response:', responseText.substring(0, 200));
       return NextResponse.json(
         { error: 'Authentication failed' },
         { status: hmsResponse.status }
+      );
+    }
+
+    // Check if response is JSON
+    const contentType = hmsResponse.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const responseText = await hmsResponse.text();
+      console.error('[HRMS Auth Proxy] HMS returned non-JSON response:', responseText.substring(0, 200));
+      return NextResponse.json(
+        { error: 'HMS authentication service error' },
+        { status: 500 }
       );
     }
 

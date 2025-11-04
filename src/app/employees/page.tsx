@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { 
   UserGroupIcon, 
   UserPlusIcon, 
@@ -11,8 +12,7 @@ import {
   EnvelopeIcon,
   PhoneIcon
 } from '@heroicons/react/24/outline';
-import { HRMSLayout, ContentCard, MetricsGrid } from '@/components/layout/HRMSLayout';
-import { MetricCard } from '@/components/ui/MetricCard';
+import { HRMSLayout, ContentCard } from '@/components/layout/HRMSLayout';
 import { TabItem } from '@/types/layout';
 
 const tabs: TabItem[] = [
@@ -22,34 +22,23 @@ const tabs: TabItem[] = [
     icon: UserGroupIcon
   },
   { 
-    name: 'Add Employee', 
+    name: 'Employee Records', 
     href: '/employees/add',
     icon: UserPlusIcon
-  },
-  { 
-    name: 'Departments', 
-    href: '/employees/departments',
-    icon: BuildingOfficeIcon
   },
   { 
     name: 'Positions', 
     href: '/employees/positions',
     icon: BriefcaseIcon
   },
+  { 
+    name: 'Departments', 
+    href: '/employees/departments',
+    icon: BuildingOfficeIcon
+  },
 ];
 
-const headerActions = (
-  <div className="flex items-center space-x-3">
-    <button className="hrms-btn hrms-btn-secondary">
-      <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
-      Search Employees
-    </button>
-    <button className="hrms-btn hrms-btn-primary">
-      <UserPlusIcon className="h-4 w-4 mr-2" />
-      Add Employee
-    </button>
-  </div>
-);
+// No header actions for Directory page - Add Employee button is on Add Employee tab
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -58,34 +47,41 @@ export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [entityId, setEntityId] = useState<string | null>(null);
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   useEffect(() => {
     fetchUserEntity();
   }, []);
 
   const fetchUserEntity = async () => {
     try {
-      console.log('[HRMS Employees Page] Fetching user entity via auth proxy...');
-      // Call local auth proxy which forwards to HMS
       const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('[HRMS Employees Page] User data:', userData);
-        const userEntityId = userData.employee_entity_id || userData.entity_platform_id;
-        
-        if (userEntityId) {
-          console.log('[HRMS Employees Page] Setting entity ID:', userEntityId);
-          setEntityId(userEntityId);
-        } else {
-          console.error('[HRMS Employees Page] No entity assignment found');
-          setError('No entity assignment found for this user');
-        }
-      } else {
-        console.error('[HRMS Employees Page] Failed to fetch user info, status:', response.status);
+      
+      if (!response.ok) {
         setError('Failed to fetch user information');
+        return;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        setError('Authentication service returned invalid response');
+        return;
+      }
+
+      const userData = await response.json();
+      const userEntityId = userData.employee_entity_id || userData.entity_platform_id;
+      
+      if (userEntityId) {
+        setEntityId(userEntityId);
+      } else {
+        setError('No entity assignment found for this user');
       }
     } catch (err) {
+      console.error('[Directory] Auth error:', err);
       setError('Failed to authenticate user');
-      console.error('[HRMS Employees Page] Error fetching user entity:', err);
     }
   };
 
@@ -96,25 +92,94 @@ export default function EmployeesPage() {
   }, [entityId]);
 
   const fetchEmployees = async () => {
+    if (!entityId) return;
+    
     try {
       setLoading(true);
-      console.log('[HRMS Employees Page] Fetching employees for entity:', entityId);
-      const response = await fetch(`/api/employees?entity_id=${entityId}`);
+      const startTime = performance.now();
       
-      console.log('[HRMS Employees Page] Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('[HRMS Employees Page] API error:', errorData);
-        throw new Error(errorData.error || 'Failed to fetch employees');
+      // Direct Supabase query with RLS - only fetch filled positions
+      console.log('[Directory] Fetching employee seats...');
+      const { data: assignments, error: assignError } = await supabase
+        .from('employee_seat_assignment')
+        .select(`
+          id,
+          entity_platform_id,
+          user_platform_id,
+          platform_role_id,
+          employee_job_title,
+          department,
+          employment_status,
+          employment_start_date,
+          employee_email,
+          employee_contact,
+          is_active,
+          assigned_at
+        `)
+        .eq('entity_platform_id', entityId)
+        .eq('is_active', true)
+        .eq('is_filled', true)
+        .order('assigned_at', { ascending: false });
+
+      const seatsTime = performance.now();
+      console.log(`[Directory] Seats query took ${(seatsTime - startTime).toFixed(0)}ms, found ${assignments?.length || 0} employees`);
+
+      if (assignError) {
+        console.error('Error fetching employees:', assignError);
+        throw assignError;
       }
 
-      const data = await response.json();
-      console.log('[HRMS Employees Page] Received data:', data);
-      setEmployees(data.employees || []);
+      // Fetch profiles for all user_platform_ids
+      const userPlatformIds = assignments?.map(a => a.user_platform_id).filter(Boolean) || [];
+      
+      let profilesMap = new Map();
+      if (userPlatformIds.length > 0) {
+        console.log(`[Directory] Fetching ${userPlatformIds.length} user profiles...`);
+        const { data: profiles } = await supabase
+          .from('profiles_with_auth')
+          .select('user_platform_id, first_name, last_name, avatar_storage, phone')
+          .in('user_platform_id', userPlatformIds);
+        
+        const profilesTime = performance.now();
+        console.log(`[Directory] Profiles query took ${(profilesTime - seatsTime).toFixed(0)}ms, found ${profiles?.length || 0} profiles`);
+        
+        profiles?.forEach((p: any) => profilesMap.set(p.user_platform_id, p));
+      }
+      
+      const transformStart = performance.now();
+
+      // Transform to match expected employee structure
+      // Filter out any assignments without user_platform_id (shouldn't happen for filled positions)
+      const employeeData = assignments?.filter(a => a.user_platform_id).map((assignment: any) => {
+        const profile = profilesMap.get(assignment.user_platform_id);
+        
+        return {
+          id: assignment.id,
+          entity_platform_id: assignment.entity_platform_id,
+          employee_id: assignment.user_platform_id,
+          first_name: profile?.first_name || 'Unknown',
+          last_name: profile?.last_name || 'User',
+          email: assignment.employee_email || profile?.email || '',
+          phone: assignment.employee_contact || profile?.phone || '',
+          department: assignment.department || 'Unassigned',
+          job_title: assignment.employee_job_title || 'Employee',
+          employment_type: 'full_time',
+          hire_date: assignment.employment_start_date || assignment.assigned_at,
+          status: assignment.employment_status || (assignment.is_active ? 'active' : 'inactive'),
+          avatar_storage: profile?.avatar_storage,
+          created_at: assignment.assigned_at
+        };
+      }) || [];
+
+      const totalTime = performance.now();
+      console.log(`[Directory] Data transformation took ${(totalTime - transformStart).toFixed(0)}ms`);
+      console.log(`[Directory] Total fetch time: ${(totalTime - startTime).toFixed(0)}ms`);
+
+      setEmployees(employeeData);
+      setError(null);
     } catch (err) {
+      console.error('Error fetching employees:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch employees');
-      console.error('[HRMS Employees Page] Error fetching employees:', err);
     } finally {
       setLoading(false);
     }
@@ -132,7 +197,6 @@ export default function EmployeesPage() {
       header={{
         title: 'Employee Management',
         subtitle: 'Manage employee records, view information, and perform HR-related tasks.',
-        actions: headerActions,
         breadcrumbs: [
           { name: 'HRMS', href: '/' },
           { name: 'Employees' },
@@ -140,39 +204,6 @@ export default function EmployeesPage() {
       }}
       tabs={tabs}
     >
-      {/* Employee Metrics */}
-      <MetricsGrid columns={4}>
-        <MetricCard
-          title="Total Employees"
-          value={employees.length}
-          color="blue"
-          icon={UserGroupIcon}
-        />
-        <MetricCard
-          title="Active Employees"
-          value={employees.filter(e => e.status === 'active').length}
-          color="green"
-          icon={UserGroupIcon}
-        />
-        <MetricCard
-          title="Departments"
-          value={new Set(employees.map(e => e.department)).size}
-          color="yellow"
-          icon={BuildingOfficeIcon}
-        />
-        <MetricCard
-          title="Recent Hires"
-          value={employees.filter(e => {
-            const hireDate = new Date(e.hire_date);
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            return hireDate >= thirtyDaysAgo;
-          }).length}
-          color="purple"
-          icon={UserPlusIcon}
-        />
-      </MetricsGrid>
-
       {/* Employee Directory */}
       <ContentCard 
         title="Employee Directory"
@@ -251,22 +282,16 @@ export default function EmployeesPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Employee
+                      Employee Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
+                      Contact Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
+                      Contact Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Hire Date
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
+                      Department
                     </th>
                   </tr>
                 </thead>
@@ -275,7 +300,7 @@ export default function EmployeesPage() {
                     <tr key={employee.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
+                          <div className="shrink-0 h-10 w-10">
                             <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
                               {employee.first_name?.[0]}{employee.last_name?.[0]}
                             </div>
@@ -285,46 +310,25 @@ export default function EmployeesPage() {
                               {employee.first_name} {employee.last_name}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {employee.employee_id}
+                              {employee.job_title}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 flex items-center gap-1">
                           <EnvelopeIcon className="h-4 w-4 text-gray-400" />
-                          {employee.email || 'N/A'}
+                          <span className="break-all">{employee.email || 'N/A'}</span>
                         </div>
-                        {employee.phone && (
-                          <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                            <PhoneIcon className="h-4 w-4 text-gray-400" />
-                            {employee.phone}
-                          </div>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{employee.job_title}</div>
-                        <div className="text-sm text-gray-500">{employee.department}</div>
+                        <div className="text-sm text-gray-900 flex items-center gap-1">
+                          <PhoneIcon className="h-4 w-4 text-gray-400" />
+                          {employee.phone || 'N/A'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          employee.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {employee.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(employee.hire_date).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-blue-600 hover:text-blue-900 mr-3">
-                          View
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900">
-                          Edit
-                        </button>
+                        <div className="text-sm text-gray-900">{employee.department || 'N/A'}</div>
                       </td>
                     </tr>
                   ))}
