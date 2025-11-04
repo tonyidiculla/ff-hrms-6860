@@ -18,6 +18,17 @@ import { TabItem } from '@/types/layout';
 import { useWeeklyRoster } from '@/hooks/useRostering';
 import { DAY_NAMES } from '@/types/rostering';
 
+import { AddShiftModal } from '@/components/rostering/AddShiftModal';
+import { StaffManagementModal } from '@/components/rostering/StaffManagementModal';
+import { QuickActionsPanel } from '@/components/rostering/QuickActionsPanel';
+import type { 
+  CreateWeeklyScheduleRequest, 
+  CreateScheduleExceptionRequest,
+  CreateStaffMemberRequest,
+  UpdateStaffMemberRequest,
+  StaffMember 
+} from '@/types/rostering';
+
 const tabs: TabItem[] = [
   { 
     name: 'Schedule Overview', 
@@ -53,6 +64,8 @@ const headerProps = {
 export default function RosteringPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showAddShift, setShowAddShift] = useState(false);
+  const [showStaffManagement, setShowStaffManagement] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
 
   // Use the database-connected rostering hook
   const {
@@ -67,8 +80,10 @@ export default function RosteringPage() {
     navigateToNextWeek,
     navigateToCurrentWeek,
     upsertWeeklySchedule,
+    deleteWeeklySchedule,
     createScheduleException,
-    createStaffMember
+    createStaffMember,
+    updateStaffMember
   } = useWeeklyRoster();
 
   const getStatusColor = (status: string) => {
@@ -102,22 +117,61 @@ export default function RosteringPage() {
   // Handler functions
   const handleAddShift = () => {
     setShowAddShift(true);
-    console.log('Add shift modal opened');
+  };
+
+  const handleAddStaff = () => {
+    setEditingStaff(null);
+    setShowStaffManagement(true);
+  };
+
+  const handleEditStaff = (staff: StaffMember) => {
+    setEditingStaff(staff);
+    setShowStaffManagement(true);
   };
 
   const handleEditShift = (shiftId: string) => {
     console.log('Edit shift:', shiftId);
-    // TODO: Open edit modal
+    // TODO: Open edit shift modal
   };
 
   const handleDeleteShift = async (scheduleId: string) => {
     if (confirm('Are you sure you want to delete this shift?')) {
       try {
-        // TODO: Implement delete functionality
-        console.log('Delete shift:', scheduleId);
+        await deleteWeeklySchedule(scheduleId);
+        console.log('Shift deleted successfully');
       } catch (error) {
         console.error('Error deleting shift:', error);
       }
+    }
+  };
+
+  // Modal handlers
+  const handleShiftSubmit = async (request: CreateWeeklyScheduleRequest | CreateScheduleExceptionRequest, type: 'schedule' | 'exception') => {
+    try {
+      if (type === 'schedule') {
+        await upsertWeeklySchedule(request as CreateWeeklyScheduleRequest);
+      } else {
+        await createScheduleException(request as CreateScheduleExceptionRequest);
+      }
+      console.log(`${type === 'schedule' ? 'Schedule' : 'Exception'} created successfully`);
+    } catch (error) {
+      console.error(`Error creating ${type}:`, error);
+      throw error;
+    }
+  };
+
+  const handleStaffSubmit = async (request: CreateStaffMemberRequest | UpdateStaffMemberRequest, isEdit: boolean) => {
+    try {
+      if (isEdit && editingStaff) {
+        await updateStaffMember(editingStaff.id, request as UpdateStaffMemberRequest);
+        console.log('Staff member updated successfully');
+      } else {
+        await createStaffMember(request as CreateStaffMemberRequest);
+        console.log('Staff member created successfully');
+      }
+    } catch (error) {
+      console.error('Error saving staff member:', error);
+      throw error;
     }
   };
 
@@ -131,6 +185,26 @@ export default function RosteringPage() {
 
   const handleEmployeeRequests = () => {
     window.location.href = '/rostering/requests';
+  };
+
+  const handleBulkSchedule = () => {
+    console.log('Opening bulk schedule operations...');
+    // TODO: Implement bulk scheduling modal
+  };
+
+  const handleManageExceptions = () => {
+    console.log('Opening schedule exceptions management...');
+    // TODO: Implement exceptions management modal
+  };
+
+  const handleViewReports = () => {
+    console.log('Opening rostering reports...');
+    // TODO: Navigate to reports page
+  };
+
+  const handleSettings = () => {
+    console.log('Opening rostering settings...');
+    // TODO: Navigate to settings page
   };
 
   return (
@@ -185,6 +259,10 @@ export default function RosteringPage() {
             <button onClick={navigateToPreviousWeek} className="hrms-btn hrms-btn-secondary text-sm">Previous</button>
             <button onClick={navigateToCurrentWeek} className="hrms-btn hrms-btn-secondary text-sm">Today</button>
             <button onClick={navigateToNextWeek} className="hrms-btn hrms-btn-secondary text-sm">Next</button>
+            <button onClick={handleAddStaff} className="hrms-btn hrms-btn-secondary text-sm">
+              <UserGroupIcon className="w-4 h-4 mr-1" />
+              Add Staff
+            </button>
             <button onClick={handleAddShift} className="hrms-btn hrms-btn-primary text-sm">
               <PlusIcon className="w-4 h-4 mr-1" />
               Add Shift
@@ -254,7 +332,12 @@ export default function RosteringPage() {
                       return (
                         <tr key={`${daySchedule.date}-${staff.id}-${index}`} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {staff.full_name}
+                            <button
+                              onClick={() => handleEditStaff(staff)}
+                              className="text-gray-900 hover:text-blue-600 font-medium"
+                            >
+                              {staff.full_name}
+                            </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {staff.role_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -310,34 +393,38 @@ export default function RosteringPage() {
       </ContentCard>
 
       {/* Quick Actions */}
-      <ContentCard title="Quick Actions">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button 
-            onClick={handleCreateTemplate}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
-          >
-            <CalendarIcon className="h-6 w-6 text-blue-600 mb-2" />
-            <h4 className="font-medium text-gray-900">Create Weekly Template</h4>
-            <p className="text-sm text-gray-500">Set up recurring shift patterns</p>
-          </button>
-          <button 
-            onClick={handleManageAvailability}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
-          >
-            <UserGroupIcon className="h-6 w-6 text-green-600 mb-2" />
-            <h4 className="font-medium text-gray-900">Manage Availability</h4>
-            <p className="text-sm text-gray-500">Update staff availability preferences</p>
-          </button>
-          <button 
-            onClick={handleEmployeeRequests}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
-          >
-            <ArrowsRightLeftIcon className="h-6 w-6 text-purple-600 mb-2" />
-            <h4 className="font-medium text-gray-900">Employee Requests</h4>
-            <p className="text-sm text-gray-500">View and manage shift change requests</p>
-          </button>
-        </div>
-      </ContentCard>
+      <QuickActionsPanel
+        onCreateTemplate={handleCreateTemplate}
+        onManageAvailability={handleManageAvailability}
+        onViewRequests={handleEmployeeRequests}
+        onBulkSchedule={handleBulkSchedule}
+        onViewReports={handleViewReports}
+        onManageExceptions={handleManageExceptions}
+        onSettings={handleSettings}
+        onStaffManagement={handleAddStaff}
+        pendingRequests={0}
+        loading={loading}
+      />
+
+      {/* Modals */}
+      <AddShiftModal
+        isOpen={showAddShift}
+        onClose={() => setShowAddShift(false)}
+        onSubmit={handleShiftSubmit}
+        staffMembers={staffMembers}
+        loading={loading}
+      />
+
+      <StaffManagementModal
+        isOpen={showStaffManagement}
+        onClose={() => {
+          setShowStaffManagement(false);
+          setEditingStaff(null);
+        }}
+        onSubmit={handleStaffSubmit}
+        staffMember={editingStaff || undefined}
+        loading={loading}
+      />
     </HRMSLayout>
   );
 }
