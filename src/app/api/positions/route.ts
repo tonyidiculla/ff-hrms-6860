@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (body.address) {
-          positionData.entity_address = body.address;
+          positionData.work_address = body.address;
         }
 
         const { data: insertData, error: insertError } = await supabaseAdmin
@@ -142,7 +142,7 @@ export async function PUT(request: NextRequest) {
     if (body.employee_job_title !== undefined) updateData.employee_job_title = body.employee_job_title;
     if (body.department !== undefined) updateData.department = body.department;
     if (body.platform_role_name !== undefined) updateData.platform_role_name = body.platform_role_name;
-    if (body.address !== undefined) updateData.entity_address = body.address;
+    if (body.address !== undefined) updateData.work_address = body.address;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
     if (body.job_grade !== undefined) updateData.job_grade = body.job_grade;
     if (body.is_manager !== undefined) updateData.is_manager = body.is_manager;
